@@ -9,18 +9,28 @@ using System.Net.Http;
 using System.Web.Http;
 using System.Web.Http.Description;
 using MuhammadAssem.Models;
+using MuhammadAssem.Models.Repos;
 
 namespace MuhammadAssem.Controllers
 {
     public class EmployeesController : ApiController
     {
-        private ApplicationDbContext db = new ApplicationDbContext();
+        //private ApplicationDbContext db = new ApplicationDbContext();
+        private IEmployeeRepository<Employee> employeeRepository;
+        private IDepartmentRepository<Department> departmentRepository;
 
         // GET: api/Employees
+
+        public EmployeesController()
+        {
+            this.employeeRepository = new EmployeeRepository();
+            this.departmentRepository = new DepartmentRepository();
+        }
+
         [HttpGet]
         public List<EmployeeViewModel> Employees()
         {
-            var dbEmployees = db.Employees.Include(e => e.Department).ToList();
+            var dbEmployees = this.employeeRepository.List();
 
             List<EmployeeViewModel> employees = new List<EmployeeViewModel>();
 
@@ -29,7 +39,7 @@ namespace MuhammadAssem.Controllers
                 var employeeViewModel = new EmployeeViewModel
                 {
                     DepartmentId = emp.DepartmentId,
-                    DOB = emp.DOB,
+                    DOB = emp.DOB.Date,
                     FristName = emp.FristName,
                     LastName = emp.LastName,
                     Id = emp.Id,
@@ -48,7 +58,7 @@ namespace MuhammadAssem.Controllers
         {
             var departmentsList = new List<DepartmentViewModel>();
 
-            foreach (var department in db.Departments.ToList())
+            foreach (var department in this.departmentRepository.List())
             {
                 departmentsList.Add(new DepartmentViewModel
                 {
@@ -67,7 +77,7 @@ namespace MuhammadAssem.Controllers
                 return Ok(viewModel);
             }
 
-            Employee employee = db.Employees.SingleOrDefault(emp => emp.Id == id);
+            Employee employee = this.employeeRepository.Find(id);
 
             if (employee == null)
             {
@@ -81,7 +91,7 @@ namespace MuhammadAssem.Controllers
                 Id = employee.Id,
                 FristName = employee.FristName,
                 LastName = employee.LastName,
-                DOB = employee.DOB,
+                DOB = employee.DOB.Date,
                 DepartmentId = employee.Department.Id,
                 DepartmentName = employee.Department.DepName,
                 DepartmentsList = departmentsList
@@ -104,11 +114,13 @@ namespace MuhammadAssem.Controllers
                 return BadRequest();
             }
 
-            db.Entry(employee).State = EntityState.Modified;
+            //db.Entry(employee).State = EntityState.Modified;
+
+            this.employeeRepository.Update(id, employee);
 
             try
             {
-                db.SaveChanges();
+                this.employeeRepository.Save();
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -134,8 +146,8 @@ namespace MuhammadAssem.Controllers
                 return BadRequest(ModelState);
             }
 
-            db.Employees.Add(employee);
-            db.SaveChanges();
+            this.employeeRepository.Add(employee);
+            this.employeeRepository.Save();
 
             return CreatedAtRoute("DefaultApi", new { id = employee.Id }, employee);
         }
@@ -144,30 +156,23 @@ namespace MuhammadAssem.Controllers
         [ResponseType(typeof(Employee))]
         public IHttpActionResult DeleteEmployee(int id)
         {
-            Employee employee = db.Employees.Find(id);
+            Employee employee = this.employeeRepository.Find(id);
             if (employee == null)
             {
                 return NotFound();
             }
 
-            db.Employees.Remove(employee);
-            db.SaveChanges();
+            this.employeeRepository.Delete(id);
+            this.employeeRepository.Save();
 
             return Ok(employee);
         }
 
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                db.Dispose();
-            }
-            base.Dispose(disposing);
-        }
+        
 
         private bool EmployeeExists(int id)
         {
-            return db.Employees.Count(e => e.Id == id) > 0;
+            return this.employeeRepository.Exists(id) ;
         }
     }
 }

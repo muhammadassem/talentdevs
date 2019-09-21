@@ -15,11 +15,11 @@ namespace MuhammadAssem.Models
 
         public string LastName { get; set; }
 
-        public DateTime? DOB { get; set; }
+        public DateTime DOB { get; set; }
         
         public int DepartmentId { get; set; }
 
         [ForeignKey("DepartmentId")]
-        public Department Department { get; set; }
+        public virtual Department Department { get; set; }
     }
 }
